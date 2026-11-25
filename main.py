@@ -1,32 +1,63 @@
-import os
+#!/usr/bin/env python3
+"""One Line, No Deadline Met — make.fun entry.
 
-EXCUSE = "My calendar says the deadline was Friday. My brain says Friday is a feeling, not a date. My brain won."
+Writes a single-line excuse for missing a deadline to the grader's
+output directory. The line itself is fixed: the program's only job is
+to emit it, verbatim, after checking it against the competition gate.
+"""
 
-MIN_CHARS = 1
-MAX_CHARS = 200
-OUTPUT_NAME = "entry.txt"
+from pathlib import Path
 
+# The entry: exactly one line, 102 characters, no second line.
+EXCUSE_LINE = (
+    "My calendar says the deadline was Friday. "
+    "My brain says Friday is a feeling, not a date. "
+    "My brain won."
+)
 
-def validate_line(line):
-    if not (MIN_CHARS <= len(line) <= MAX_CHARS):
-        raise ValueError("line must be %d-%d chars, got %d" % (MIN_CHARS, MAX_CHARS, len(line)))
-    if "\n" in line or "\r" in line:
-        raise ValueError("line must be a single line")
-    if not line.strip():
-        raise ValueError("line must not be only whitespace")
-
-
-def write_entry(line, out_dir):
-    validate_line(line)
-    os.makedirs(out_dir, exist_ok=True)
-    with open(os.path.join(out_dir, OUTPUT_NAME), "w", encoding="utf-8") as f:
-        f.write(line)
+# Competition gate: a single line, 1-200 characters.
+LOWER_BOUND = 1
+UPPER_BOUND = 200
+ENTRY_FILENAME = "entry.txt"
+DEFAULT_OUTPUT = "/output"
 
 
-def main():
-    out_dir = os.environ.get("MAKEFUN_OUTPUT_DIR", "/output")
-    write_entry(EXCUSE, out_dir)
+def check_gate(text):
+    """Raise ValueError unless *text* fits the one-line gate."""
+    problems = []
+    if not LOWER_BOUND <= len(text) <= UPPER_BOUND:
+        problems.append(
+            "length %d is outside %d-%d characters"
+            % (len(text), LOWER_BOUND, UPPER_BOUND)
+        )
+    if text.count("\n") or text.count("\r"):
+        problems.append("must be a single line")
+    if not text.strip():
+        problems.append("must not be blank")
+    if text != text.strip():
+        problems.append("must not start or end with whitespace")
+    if "  " in text:
+        problems.append("must not contain double spaces")
+    if problems:
+        raise ValueError("; ".join(problems))
+
+
+def emit(text, directory):
+    """Validate *text*, then write it to ``directory/entry.txt``."""
+    check_gate(text)
+    target_dir = Path(directory)
+    target_dir.mkdir(parents=True, exist_ok=True)
+    target_path = target_dir / ENTRY_FILENAME
+    target_path.write_text(text, encoding="utf-8")
+    return target_path
+
+
+def run():
+    import os
+
+    out_dir = os.environ.get("MAKEFUN_OUTPUT_DIR", DEFAULT_OUTPUT)
+    emit(EXCUSE_LINE, out_dir)
 
 
 if __name__ == "__main__":
-    main()
+    run()
